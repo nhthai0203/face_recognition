@@ -25,10 +25,16 @@ class Main(QMainWindow):
             color: purple;
             border: 2px solid purple;
             border-radius: 10px;
+            padding: 10px;
+            margin: 10px;
         }
         QPushButton:hover {
             background-color: purple;
             color: lightpink;
+        }
+        QPushButton:pressed {
+            background-color: darkmagenta;
+            color: white;
         }
         """)
 
@@ -87,6 +93,7 @@ class Main(QMainWindow):
             full_image_rgb = cv2.cvtColor(self.image_list["full_image"], cv2.COLOR_BGR2RGB)
             cv2.imwrite('./.cut_face.jpg', cut_face_rgb)
             cv2.imwrite('./.full_image.jpg', full_image_rgb)
+            print("Photos saved successfully")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
