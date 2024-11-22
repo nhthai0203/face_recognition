@@ -61,6 +61,8 @@ class App:
             self.webcam_label.image = imgtk  # keep a reference
 
         self.main_window.after(1, self.show_webcam)  # call this method again after 10ms
+
+        
     
     # save images form image_list if face detected
     def take_photo(self):
