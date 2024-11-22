@@ -40,15 +40,20 @@ class MainWindow(QMainWindow):
         self.stack_navigator = QStackedLayout()
         self.central_widget.setLayout(self.stack_navigator)
 
-        # Camera page
-        self.camera_page = CameraPage()
-        self.stack_navigator.addWidget(self.camera_page)
+        # Pages
+        self.camera_page = CameraPage(self.stack_navigator)
+        self.attendance_page = AttendancePage(self.stack_navigator)
+
+        # Set current index
+        self.stack_navigator.setCurrentIndex(0)
 
 
 
 class CameraPage(QWidget):
-    def __init__(self):
+    def __init__(self, stack_navigator):
         super().__init__()
+        self.stack_navigator = stack_navigator
+        self.stack_navigator.addWidget(self)
 
         # Camera settings
         self.cam = cv2.VideoCapture(0)
@@ -59,7 +64,7 @@ class CameraPage(QWidget):
         self.hbox = QHBoxLayout()
         self.setLayout(self.hbox)    
 
-        self.cam_label = QLabel(self)
+        self.cam_label = QLabel()
         self.cam_label.setFixedSize(640, 480)
         self.hbox.addWidget(self.cam_label)
 
@@ -83,18 +88,50 @@ class CameraPage(QWidget):
             self.cam_label.setPixmap(qpix)
 
     def take_photo(self):
-        pass
+        cv2.imwrite("photo.jpg", self.cam.read()[1])
+        self.stack_navigator.setCurrentIndex(1)
 
 
 class AttendancePage(QWidget):
-    def __init__(self):
+    def __init__(self, stack_navigator):
         super().__init__()
+        self.stack_navigator = stack_navigator
+        self.stack_navigator.addWidget(self)
+
+        # Layout settings
+        self.vbox = QVBoxLayout()
+        self.hbox = QHBoxLayout()
+        self.setLayout(self.hbox)
+
+        self.image_label = QLabel()
+        self.image_label.setFixedSize(640, 480)
+        self.hbox.addWidget(self.image_label)
+        self.hbox.addLayout(self.vbox)
+
+        self.mark_attendance_btn = QPushButton("Mark Attendance")
+        self.mark_attendance_btn.setFixedSize(150, 60)
+        self.mark_attendance_btn.clicked.connect(self.mark_attendance)
+        self.vbox.addWidget(self.mark_attendance_btn)
+
+        self.retake_photo_btn = QPushButton("Retake Photo")
+        self.retake_photo_btn.setFixedSize(150, 60)
+        self.retake_photo_btn.clicked.connect(self.retake_photo)
+        self.vbox.addWidget(self.retake_photo_btn)
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.show_photo)
+        self.timer.start(10)
+
+
+
+    def show_photo(self):
+        self.image_label.setPixmap(QPixmap("photo.jpg"))
 
     def mark_attendance(self):
         pass
 
     def retake_photo(self):
-        pass
+        self.stack_navigator.setCurrentIndex(0)
 
 
 
@@ -107,6 +144,8 @@ class RegisterPage(QWidget):
 
     def retake_photo(self):
         pass
+
+
 
 class InputPage(QWidget):
     def __init__(self):
