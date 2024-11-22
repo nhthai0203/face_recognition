@@ -157,13 +157,6 @@ class InputPage(QWidget):
     def retake_photo(self):
         pass
 
-        
-
-    
-        
-
-        
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
