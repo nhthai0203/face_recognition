@@ -1,7 +1,7 @@
 from flask import Flask, request
 from flask_restful import Api, Resource
 import face_recognition
-import os, json, atexit
+import os, json, pickle
 import numpy as np
 
 # Initialize the Flask app

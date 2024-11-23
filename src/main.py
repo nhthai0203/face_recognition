@@ -12,6 +12,8 @@ import config
 
 class MainWindow(QMainWindow):
     data = {}
+    stack_navigator = QStackedLayout()
+
     def __init__(self):
         super().__init__()
         
@@ -44,24 +46,22 @@ class MainWindow(QMainWindow):
         # Central widget
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
-
-        # Stack navigator
-        self.stack_navigator = QStackedLayout()
         self.central_widget.setLayout(self.stack_navigator)
 
         # Pages
-        self.camera_page = CameraPage(self.stack_navigator)
-        self.attendance_page = AttendancePage(self.stack_navigator)
-        self.register_page = RegisterPage(self.stack_navigator)
+        self.camera_page = CameraPage()
+        self.stack_navigator.addWidget(self.camera_page)
+        self.attendance_page = AttendancePage()
+        self.stack_navigator.addWidget(self.attendance_page)
+        self.register_page = RegisterPage()
+        self.stack_navigator.addWidget(self.register_page)
 
         # Set current index
         self.stack_navigator.setCurrentIndex(0)
 
 class CameraPage(QWidget):
-    def __init__(self, stack_navigator):
+    def __init__(self):
         super().__init__()
-        self.stack_navigator = stack_navigator
-        self.stack_navigator.addWidget(self)
 
         # Camera settings
         self.cam = cv2.VideoCapture(0)
@@ -104,15 +104,13 @@ class CameraPage(QWidget):
         if respone.status_code == 200:
             MainWindow.data["message"] = respone.json()["message"]
             print(MainWindow.data["message"])
-            self.stack_navigator.setCurrentIndex(1)
+            MainWindow.stack_navigator.setCurrentIndex(1)
         elif respone.status_code == 404:
-            self.stack_navigator.setCurrentIndex(2)
+            MainWindow.stack_navigator.setCurrentIndex(2)
 
 class AttendancePage(QWidget):
-    def __init__(self, stack_navigator):
+    def __init__(self):
         super().__init__()
-        self.stack_navigator = stack_navigator
-        self.stack_navigator.addWidget(self)
 
         # Layout settings
         self.vbox = QVBoxLayout()
@@ -145,13 +143,11 @@ class AttendancePage(QWidget):
         pass
 
     def retake_photo(self):
-        self.stack_navigator.setCurrentIndex(0)
+        MainWindow.stack_navigator.setCurrentIndex(0)
 
 class RegisterPage(QWidget):
-    def __init__(self, stack_navigator):
+    def __init__(self):
         super().__init__()
-        self.stack_navigator = stack_navigator
-        self.stack_navigator.addWidget(self)
 
         # Layout settings
         self.vbox = QVBoxLayout()
@@ -185,7 +181,7 @@ class RegisterPage(QWidget):
         input_dialog.exec()
 
     def retake_photo(self):
-        self.stack_navigator.setCurrentIndex(0)
+        MainWindow.stack_navigator.setCurrentIndex(0)
 
 class InputDialog(QDialog):
     def __init__(self):
@@ -241,6 +237,7 @@ class InputDialog(QDialog):
         student_id = self.student_id_input.text()
         respone = requests.post(config.API_KEY + "register_face/" + student_id, files={"image": open("photo.jpg", "rb")})
         self.close()
+        MainWindow.stack_navigator.setCurrentIndex(0)
 
 if __name__ == "__main__":
     try:
