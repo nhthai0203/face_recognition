@@ -1,3 +1,5 @@
+import face_recognition
+
 class FaceRecognize(Resource):
     def post(self):
         # Get the image from the request
