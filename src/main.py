@@ -3,12 +3,14 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 import cv2
 import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QStackedLayout, QPushButton, QVBoxLayout, QHBoxLayout
+from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QStackedLayout, QPushButton, QVBoxLayout, QHBoxLayout, QDialog, QLineEdit
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtCore import QTimer
-import util 
+import requests
+import config
 
 class MainWindow(QMainWindow):
+    data = {}
     def __init__(self):
         super().__init__()
         
@@ -18,6 +20,9 @@ class MainWindow(QMainWindow):
         self.setStyleSheet("""
             QMainWindow {
                 background-color: lightpink;
+            }
+            QLabel {
+                border: 2px solid purple;
             }
             QPushButton {
                 background-color: lightpink;
@@ -34,7 +39,6 @@ class MainWindow(QMainWindow):
                 color: mangenta;
             }
             """)
-        self.data = {}
 
         # Central widget
         self.central_widget = QWidget()
@@ -47,21 +51,22 @@ class MainWindow(QMainWindow):
         # Pages
         self.camera_page = CameraPage(self.stack_navigator)
         self.attendance_page = AttendancePage(self.stack_navigator)
+        self.register_page = RegisterPage(self.stack_navigator)
 
         # Set current index
         self.stack_navigator.setCurrentIndex(0)
 
-
-
 class CameraPage(QWidget):
-    def __init__(self, stack_navigator, data):
+    def __init__(self, stack_navigator):
         super().__init__()
-        self.data = data
         self.stack_navigator = stack_navigator
         self.stack_navigator.addWidget(self)
 
         # Camera settings
         self.cam = cv2.VideoCapture(0)
+        if not self.cam.isOpened():
+            print("Error: Camera is not opened")
+            sys.exit()
         self.cam.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         self.cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
@@ -94,18 +99,17 @@ class CameraPage(QWidget):
 
     def take_photo(self):
         cv2.imwrite("photo.jpg", self.cam.read()[1])
-        response = util.get_request()
-        if response.status_code == 200:
-            self.data["response_message"] = response.json()["message"]
+        respone = requests.post(config.API_KEY + "face_recognize", files={"image": open("photo.jpg", "rb")})
+        if respone.status_code == 200:
+            MainWindow.data["message"] = respone.json()["message"]
+            print(MainWindow.data["message"])
             self.stack_navigator.setCurrentIndex(1)
-        else:
+        elif respone.status_code == 404:
             self.stack_navigator.setCurrentIndex(2)
 
-
 class AttendancePage(QWidget):
-    def __init__(self, stack_navigator, data):
+    def __init__(self, stack_navigator):
         super().__init__()
-        self.data = data
         self.stack_navigator = stack_navigator
         self.stack_navigator.addWidget(self)
 
@@ -133,8 +137,6 @@ class AttendancePage(QWidget):
         self.timer.timeout.connect(self.show_photo)
         self.timer.start(10)
 
-
-
     def show_photo(self):
         self.image_label.setPixmap(QPixmap("photo.jpg"))
 
@@ -144,30 +146,100 @@ class AttendancePage(QWidget):
     def retake_photo(self):
         self.stack_navigator.setCurrentIndex(0)
 
-
-
 class RegisterPage(QWidget):
-    def __init__(self):
+    def __init__(self, stack_navigator):
         super().__init__()
+        self.stack_navigator = stack_navigator
+        self.stack_navigator.addWidget(self)
+
+        # Layout settings
+        self.vbox = QVBoxLayout()
+        self.hbox = QHBoxLayout()
+        self.setLayout(self.hbox)
+
+        self.image_label = QLabel()
+        self.image_label.setFixedSize(640, 480)
+        self.hbox.addWidget(self.image_label)
+        self.hbox.addLayout(self.vbox)
+
+        self.register_btn = QPushButton("Register")
+        self.register_btn.setFixedSize(150, 60)
+        self.register_btn.clicked.connect(self.register)
+        self.vbox.addWidget(self.register_btn)
+
+        self.retake_photo_btn = QPushButton("Retake Photo")
+        self.retake_photo_btn.setFixedSize(150, 60)
+        self.retake_photo_btn.clicked.connect(self.retake_photo)
+        self.vbox.addWidget(self.retake_photo_btn)
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.show_photo)
+        self.timer.start(10)
+
+    def show_photo(self):
+        self.image_label.setPixmap(QPixmap("photo.jpg"))
 
     def register(self):
-        pass
+        input_dialog = InputDialog()
+        input_dialog.exec()
 
     def retake_photo(self):
-        pass
+        self.stack_navigator.setCurrentIndex(0)
 
-
-
-class InputPage(QWidget):
+class InputDialog(QDialog):
     def __init__(self):
         super().__init__()
+        self.setWindowTitle("Input Student ID")
+        self.setGeometry(600, 300, 400, 200)
+        self.setStyleSheet("""
+            QDialog {
+                background-color: lightpink;
+            }
+            QPushButton {
+                background-color: lightpink;
+                color: purple;
+                border: 2px solid purple;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: purple;
+                color: lightpink;
+            }
+            QPushButton:pressed {
+                background-color: violet;
+                color: mangenta;
+            }
+            QLineEdit {
+                background-color: lightpink;
+                color: purple;
+                border: 2px solid purple;
+                border-radius: 5px;
+            }
+            QLineEdit:hover {
+                background-color: purple;
+                color: lightpink;
+            }
+            QLineEdit:pressed {
+                background-color: violet;
+                color: mangenta;
+            }
+            """)
 
-    def input(self):
-        pass
+        self.vbox = QVBoxLayout()
+        self.setLayout(self.vbox)
 
-    def retake_photo(self):
-        pass
+        self.student_id_input = QLineEdit()
+        self.student_id_input.setPlaceholderText("Student ID")
+        self.vbox.addWidget(self.student_id_input)
 
+        self.register_btn = QPushButton("Register")
+        self.register_btn.clicked.connect(self.register)
+        self.vbox.addWidget(self.register_btn)
+
+    def register(self):
+        student_id = self.student_id_input.text()
+        respone = requests.post(config.API_KEY + "register_face/" + student_id, files={"image": open("photo.jpg", "rb")})
+        self.close()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
