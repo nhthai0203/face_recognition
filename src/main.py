@@ -3,6 +3,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 import cv2
 import sys
+import os
 from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QStackedLayout, QPushButton, QVBoxLayout, QHBoxLayout, QDialog, QLineEdit
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtCore import QTimer
@@ -242,7 +243,12 @@ class InputDialog(QDialog):
         self.close()
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
-    sys.exit(app.exec())
+    try:
+        app = QApplication(sys.argv)
+        window = MainWindow()
+        window.show()
+        sys.exit(app.exec())
+    finally:
+        window.camera_page.cam.release()
+        if os.path.exists("photo.jpg"):
+            os.remove("photo.jpg")
