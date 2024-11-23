@@ -6,6 +6,7 @@ import sys
 from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QStackedLayout, QPushButton, QVBoxLayout, QHBoxLayout
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtCore import QTimer
+import util 
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -33,7 +34,7 @@ class MainWindow(QMainWindow):
                 color: mangenta;
             }
             """)
-    
+        self.data = {}
 
         # Central widget
         self.central_widget = QWidget()
@@ -53,8 +54,9 @@ class MainWindow(QMainWindow):
 
 
 class CameraPage(QWidget):
-    def __init__(self, stack_navigator):
+    def __init__(self, stack_navigator, data):
         super().__init__()
+        self.data = data
         self.stack_navigator = stack_navigator
         self.stack_navigator.addWidget(self)
 
@@ -92,12 +94,18 @@ class CameraPage(QWidget):
 
     def take_photo(self):
         cv2.imwrite("photo.jpg", self.cam.read()[1])
-        self.stack_navigator.setCurrentIndex(1)
+        response = util.get_request()
+        if response.status_code == 200:
+            self.data["response_message"] = response.json()["message"]
+            self.stack_navigator.setCurrentIndex(1)
+        else:
+            self.stack_navigator.setCurrentIndex(2)
 
 
 class AttendancePage(QWidget):
-    def __init__(self, stack_navigator):
+    def __init__(self, stack_navigator, data):
         super().__init__()
+        self.data = data
         self.stack_navigator = stack_navigator
         self.stack_navigator.addWidget(self)
 
