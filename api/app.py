@@ -8,6 +8,8 @@ import numpy as np
 app = Flask(__name__)
 api = Api(app)
 
+DATA_PATH = "api/data/"
+TEMP_PATH = "api/temp.jpg"
 known_face_encodings = []
 student_IDs = []
 
@@ -16,12 +18,12 @@ class FaceRecognize(Resource):
     def post(self):
         # Get the image from client
         image_file = request.files["image"]
-        
+
         # Save the image temporarily     
-        image_file.save("temp.jpg")
+        image_file.save(TEMP_PATH)
 
         # Encoding face
-        image = face_recognition.load_image_file("temp.jpg")
+        image = face_recognition.load_image_file(TEMP_PATH)
         encodings = face_recognition.face_encodings(image)
         if len(encodings) == 0:
             return {"message": "No face detected"}, 422
@@ -36,36 +38,36 @@ class RegisterFace(Resource):
         image_file = request.files["image"]
         
         # Save the image temporarily
-        image_file.save("temp.jpg")
+        image_file.save(TEMP_PATH)
         
         # Encoding face
-        image = face_recognition.load_image_file("temp.jpg")
+        image = face_recognition.load_image_file(TEMP_PATH)
         encodings = face_recognition.face_encodings(image)
         if len(encodings) == 0:
             return {"message": "No face detected"}, 400
         known_face_encodings.append(encodings[0])
         student_IDs.append(student_ID)
+        save_encoding(student_ID, encodings[0].tolist())
         return {"message": "Face registered"}, 200
     
 api.add_resource(FaceRecognize, "/face_recognize") 
 api.add_resource(RegisterFace, "/register_face/<string:student_ID>")
 
-def save_known_face_encodings():
-    with open("api/known_face_encodings.json", "w") as f:
-        data = dict(zip(student_IDs, [encoding.tolist() for encoding in known_face_encodings]))
-        json.dump(data, f)
-# atexit.register(save_known_face_encodings)
+def load_data():
+    for file in os.listdir(DATA_PATH):
+        with open(DATA_PATH + file, "r") as f:
+            encoding = json.load(f)
+            known_face_encodings.append(np.array(encoding))
+            student_IDs.append(file.split(".")[0])
+
+def save_encoding(student_ID, encoding):
+    with open(DATA_PATH + student_ID + ".json", "w") as f:
+        json.dump(encoding, f)
 
 if __name__ == "__main__":
-    if os.path.getsize("api/known_face_encodings.json") > 0:
-        with open("api/known_face_encodings.json", "r") as f:
-            data = json.load(f)
-            for key, value in data.items():
-                known_face_encodings.append(np.array(value))
-                student_IDs.append(key)
     try:
+        load_data()
         app.run(debug=True)
     finally:
-        save_known_face_encodings()
-        if os.path.exists("temp.jpg"):
-            os.remove("temp.jpg")
+        if os.path.exists(TEMP_PATH):
+            os.remove(TEMP_PATH)
