@@ -13,7 +13,7 @@ API_KEY = "http://127.0.0.1:5000/"
 PHOTO_PATH = "src/temp.jpg"
 
 class MainWindow(QMainWindow):
-    data = {"status": "Take photo to recognize"}
+    status = "Take photo to recognize"
     stack_navigator = QStackedLayout()
 
     def __init__(self):
@@ -71,7 +71,12 @@ class MainWindow(QMainWindow):
         self.timer.start(10)
 
     def show_status_bar(self):
-        self.statusBar().showMessage(self.data["status"])
+        self.statusBar().showMessage(self.status)
+
+    @classmethod
+    def change_page(cls, index, status):
+        cls.stack_navigator.setCurrentIndex(index)
+        cls.status = status
 
 class CameraPage(QWidget):
     def __init__(self):
@@ -113,14 +118,19 @@ class CameraPage(QWidget):
             self.cam_label.setPixmap(qpix)
 
     def take_photo(self):
-        cv2.imwrite(PHOTO_PATH, self.cam.read()[1])
+        ret, frame = self.cam.read()
+        if not ret:
+            return
+        cv2.imwrite(PHOTO_PATH, frame)
         respone = requests.post(API_KEY + "face_recognize", files={"image": open(PHOTO_PATH, "rb")})
+        if respone.status_code != 400:
+            top, right, bottom, left = respone.json()["face_location"]
+            cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
+            cv2.imwrite(PHOTO_PATH, frame)
         if respone.status_code == 200:
-            MainWindow.data["status"] = respone.json()["message"]
-            MainWindow.stack_navigator.setCurrentIndex(1)
+            MainWindow.change_page(1, respone.json()["message"])
         elif respone.status_code == 404:
-            MainWindow.data["status"] = respone.json()["message"]
-            MainWindow.stack_navigator.setCurrentIndex(2)
+            MainWindow.change_page(2, respone.json()["message"])
 
 class AttendancePage(QWidget):
     def __init__(self):
@@ -157,8 +167,7 @@ class AttendancePage(QWidget):
         pass
 
     def retake_photo(self):
-        MainWindow.data["status"] = "Take photo again"
-        MainWindow.stack_navigator.setCurrentIndex(0)
+        MainWindow.change_page(0, "Take photo again")
 
 class RegisterPage(QWidget):
     def __init__(self):
@@ -196,8 +205,7 @@ class RegisterPage(QWidget):
         input_dialog.exec()
 
     def retake_photo(self):
-        MainWindow.data["status"] = "Take photo again"
-        MainWindow.stack_navigator.setCurrentIndex(0)
+        MainWindow.change_page(0, "Take photo again")
 
 class InputDialog(QDialog):
     def __init__(self):
@@ -253,8 +261,7 @@ class InputDialog(QDialog):
         student_id = self.student_id_input.text()
         respone = requests.post(API_KEY + "register_face/" + student_id, files={"image": open(PHOTO_PATH, "rb")})
         self.close()
-        MainWindow.data["status"] = "Face registered, take photo again to recognize"
-        MainWindow.stack_navigator.setCurrentIndex(0)
+        MainWindow.change_page(0, "Take photo again to recognize")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

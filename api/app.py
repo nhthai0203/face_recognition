@@ -24,13 +24,14 @@ class FaceRecognize(Resource):
 
         # Encoding face
         image = face_recognition.load_image_file(TEMP_PATH)
-        encodings = face_recognition.face_encodings(image)
-        if len(encodings) == 0:
-            return {"message": "No face detected"}, 422
-        compare_list = face_recognition.compare_faces(known_face_encodings, encodings[0])
+        face_location = encoding_face(image)
+        if not face_location:
+            return {"message": "No face detected"}, 400
+        encoding, location = face_location
+        compare_list = face_recognition.compare_faces(known_face_encodings, encoding, tolerance = 0.4)
         if True in compare_list:
-            return {"message": student_IDs[compare_list.index(True)]}, 200
-        return {"message": "Unknown face"}, 404
+            return {"message": student_IDs[compare_list.index(True)], "face_location": location}, 200
+        return {"message": "Unknown face", "face_location": location}, 404
 
 class RegisterFace(Resource):
     def post(self, student_ID):
@@ -42,12 +43,14 @@ class RegisterFace(Resource):
         
         # Encoding face
         image = face_recognition.load_image_file(TEMP_PATH)
-        encodings = face_recognition.face_encodings(image)
-        if len(encodings) == 0:
+        face_location = encoding_face(image)
+        if not face_location:
             return {"message": "No face detected"}, 400
-        known_face_encodings.append(encodings[0])
+        encoding, _ = face_location
+
+        known_face_encodings.append(encoding)
         student_IDs.append(student_ID)
-        save_encoding(student_ID, encodings[0].tolist())
+        save_encoding(student_ID, encoding.tolist())
         return {"message": "Face registered"}, 200
     
 api.add_resource(FaceRecognize, "/face_recognize") 
@@ -63,6 +66,23 @@ def load_data():
 def save_encoding(student_ID, encoding):
     with open(DATA_PATH + student_ID + ".json", "w") as f:
         json.dump(encoding, f)
+
+def encoding_face(image):
+    face_locations = face_recognition.face_locations(image)
+    if len(face_locations) == 0:
+        return None
+    biggest_face = None
+    biggest_area = 0
+    for top, right, bottom, left in face_locations:
+        area = (bottom - top) * (right - left)
+        if area > biggest_area:
+            biggest_area = area
+            biggest_face = (top, right, bottom, left) 
+            cut_face = image[top:bottom, left:right]
+    face_encodings = face_recognition.face_encodings(cut_face)
+    if len(face_encodings) == 0:
+        return None
+    return face_encodings[0], biggest_face
 
 if __name__ == "__main__":
     try:
