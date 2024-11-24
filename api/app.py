@@ -34,7 +34,7 @@ class FaceRecognize(Resource):
         if True in compare_list:
             return {"message": student_IDs[compare_list.index(True)], "face_location": location}, 200
 
-        return {"message": "Unknown face", "face_location": location}, 404
+        return {"message": "Unknown", "face_location": location}, 404
 
 class RegisterFace(Resource):
     def post(self, student_ID):

@@ -126,7 +126,10 @@ class CameraPage(QWidget):
         respone = requests.post(API_KEY + "face_recognize", files={"image": open(RAW_PHOTO_PATH, "rb")})
         if respone.status_code != 400:
             top, right, bottom, left = respone.json()["face_location"]
-            cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
+            color = (0, 255, 0) if respone.status_code == 200 else (0, 0, 255)
+            cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
+            cv2.rectangle(frame, (left - 1, bottom + 35), (right + 1, bottom), color, cv2.FILLED)
+            cv2.putText(frame, respone.json()["message"], (left + 6, bottom + 27), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (255, 255, 255), 2)
             cv2.imwrite(FACE_DETECTED_PHOTO_PATH, frame)
         if respone.status_code == 200:
             MainWindow.change_page(1, respone.json()["message"])
