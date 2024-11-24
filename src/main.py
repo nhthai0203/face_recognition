@@ -10,7 +10,8 @@ from PyQt6.QtCore import QTimer
 import requests
 
 API_KEY = "http://127.0.0.1:5000/"
-PHOTO_PATH = "src/temp.jpg"
+RAW_PHOTO_PATH = "src/raw_photo.jpg"
+FACE_DETECTED_PHOTO_PATH = "src/face_detected_photo.jpg"
 
 class MainWindow(QMainWindow):
     status = "Take photo to recognize"
@@ -121,12 +122,12 @@ class CameraPage(QWidget):
         ret, frame = self.cam.read()
         if not ret:
             return
-        cv2.imwrite(PHOTO_PATH, frame)
-        respone = requests.post(API_KEY + "face_recognize", files={"image": open(PHOTO_PATH, "rb")})
+        cv2.imwrite(RAW_PHOTO_PATH, frame)
+        respone = requests.post(API_KEY + "face_recognize", files={"image": open(RAW_PHOTO_PATH, "rb")})
         if respone.status_code != 400:
             top, right, bottom, left = respone.json()["face_location"]
             cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
-            cv2.imwrite(PHOTO_PATH, frame)
+            cv2.imwrite(FACE_DETECTED_PHOTO_PATH, frame)
         if respone.status_code == 200:
             MainWindow.change_page(1, respone.json()["message"])
         elif respone.status_code == 404:
@@ -161,7 +162,7 @@ class AttendancePage(QWidget):
         self.timer.start(10)
 
     def show_photo(self):
-        self.image_label.setPixmap(QPixmap(PHOTO_PATH))
+        self.image_label.setPixmap(QPixmap(FACE_DETECTED_PHOTO_PATH))
 
     def mark_attendance(self):
         pass
@@ -198,7 +199,7 @@ class RegisterPage(QWidget):
         self.timer.start(10)
 
     def show_photo(self):
-        self.image_label.setPixmap(QPixmap(PHOTO_PATH))
+        self.image_label.setPixmap(QPixmap(FACE_DETECTED_PHOTO_PATH))
 
     def register(self):
         input_dialog = InputDialog()
@@ -259,7 +260,7 @@ class InputDialog(QDialog):
 
     def register(self):
         student_id = self.student_id_input.text()
-        respone = requests.post(API_KEY + "register_face/" + student_id, files={"image": open(PHOTO_PATH, "rb")})
+        respone = requests.post(API_KEY + "register_face/" + student_id, files={"image": open(RAW_PHOTO_PATH, "rb")})
         self.close()
         MainWindow.change_page(0, "Take photo again to recognize")
 
@@ -271,5 +272,7 @@ if __name__ == "__main__":
         sys.exit(app.exec())
     finally:
         window.camera_page.cam.release()
-        if os.path.exists(PHOTO_PATH):
-            os.remove(PHOTO_PATH)
+        if os.path.exists(RAW_PHOTO_PATH):
+            os.remove(RAW_PHOTO_PATH)
+        if os.path.exists(FACE_DETECTED_PHOTO_PATH):
+            os.remove(FACE_DETECTED_PHOTO_PATH)
