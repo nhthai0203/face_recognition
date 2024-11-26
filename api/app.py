@@ -1,9 +1,8 @@
 from flask import Flask, request
 from flask_restful import Api, Resource
-import face_recognition
-import os, json, pickle
+import face_recognition, cv2
+import os, json, sys
 import numpy as np
-import cv2
 
 # Initialize the Flask app
 app = Flask(__name__)
@@ -102,6 +101,9 @@ if __name__ == "__main__":
     try:
         load_data()
         app.run(debug=True)
+    except Exception as e:
+        print(e)
+        sys.exit()
     finally:
         if os.path.exists(TEMP_PATH):
             os.remove(TEMP_PATH)

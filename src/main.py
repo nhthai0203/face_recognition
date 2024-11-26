@@ -1,19 +1,20 @@
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-import cv2
-import sys
-import os
-from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QStackedLayout, QPushButton, QVBoxLayout, QHBoxLayout, QDialog, QLineEdit
+import cv2, sys, os, requests
+from datetime import datetime
+from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QStackedLayout, QPushButton, QVBoxLayout, QHBoxLayout, QDialog, QLineEdit, QMessageBox
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtCore import QTimer
-import requests
 
 API_KEY = "http://127.0.0.1:5000/"
 RAW_PHOTO_PATH = "src/raw_photo.jpg"
 FACE_DETECTED_PHOTO_PATH = "src/face_detected_photo.jpg"
+ATTENDANCE_PATH = "src/attendance.csv"
 
 class MainWindow(QMainWindow):
+    temp_data = {}
+    temp_attendance = []
     status = "Take photo to recognize"
     stack_navigator = QStackedLayout()
 
@@ -123,18 +124,24 @@ class CameraPage(QWidget):
         if not ret:
             return
         cv2.imwrite(RAW_PHOTO_PATH, frame)
-        respone = requests.post(API_KEY + "face_recognize", files={"image": open(RAW_PHOTO_PATH, "rb")})
-        if respone.status_code != 400:
-            top, right, bottom, left = respone.json()["face_location"]
-            color = (0, 255, 0) if respone.status_code == 200 else (0, 0, 255)
+        response = requests.post(API_KEY + "face_recognize", files={"image": open(RAW_PHOTO_PATH, "rb")})
+        
+        if response.status_code != 400:
+            top, right, bottom, left = response.json()["face_location"]
+            color = (0, 255, 0) if response.status_code == 200 else (0, 0, 255)
             cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
             cv2.rectangle(frame, (left - 1, bottom + 35), (right + 1, bottom), color, cv2.FILLED)
-            cv2.putText(frame, respone.json()["message"], (left + 6, bottom + 27), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (255, 255, 255), 2)
+            cv2.putText(frame, response.json()["message"], (left + 6, bottom + 27), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (255, 255, 255), 2)
             cv2.imwrite(FACE_DETECTED_PHOTO_PATH, frame)
-        if respone.status_code == 200:
-            MainWindow.change_page(1, respone.json()["message"])
-        elif respone.status_code == 404:
-            MainWindow.change_page(2, respone.json()["message"])
+
+        if response.status_code == 200:
+            MainWindow.change_page(1, "Face recognized: " + response.json()["message"])
+            now = datetime.now()
+            MainWindow.temp_data = {"student": response.json()["message"], "time": f"{now:%Y-%m-%d %H-%M-%S}"}
+        elif response.status_code == 404:
+            MainWindow.change_page(2, "Face not recognized: " + response.json()["message"])
+        else:
+            MainWindow.status = "Error: " + response.json()["message"]
 
 class AttendancePage(QWidget):
     def __init__(self):
@@ -168,10 +175,18 @@ class AttendancePage(QWidget):
         self.image_label.setPixmap(QPixmap(FACE_DETECTED_PHOTO_PATH))
 
     def mark_attendance(self):
-        pass
+        if "student" in MainWindow.temp_data and "time" in MainWindow.temp_data:
+            if MainWindow.temp_data["student"] in MainWindow.temp_attendance:
+                message_box = QMessageBox.information(None, "Information", "Your attendance has already marked")
+                return
+            with open(ATTENDANCE_PATH, "a") as f:
+                f.write(f'{MainWindow.temp_data["student"]}, {MainWindow.temp_data["time"]}\n')
+                MainWindow.temp_attendance.append(MainWindow.temp_data["student"])
+                message_box = QMessageBox.information(None, "Information", "Mark attendance successfully")
 
     def retake_photo(self):
         MainWindow.change_page(0, "Take photo again")
+        MainWindow.temp_data = {}
 
 class RegisterPage(QWidget):
     def __init__(self):
@@ -216,39 +231,6 @@ class InputDialog(QDialog):
         super().__init__()
         self.setWindowTitle("Input Student ID")
         self.setGeometry(600, 300, 400, 200)
-        self.setStyleSheet("""
-            QDialog {
-                background-color: lightpink;
-            }
-            QPushButton {
-                background-color: lightpink;
-                color: purple;
-                border: 2px solid purple;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: purple;
-                color: lightpink;
-            }
-            QPushButton:pressed {
-                background-color: violet;
-                color: mangenta;
-            }
-            QLineEdit {
-                background-color: lightpink;
-                color: purple;
-                border: 2px solid purple;
-                border-radius: 5px;
-            }
-            QLineEdit:hover {
-                background-color: purple;
-                color: lightpink;
-            }
-            QLineEdit:pressed {
-                background-color: violet;
-                color: mangenta;
-            }
-            """)
 
         self.vbox = QVBoxLayout()
         self.setLayout(self.vbox)
@@ -263,7 +245,7 @@ class InputDialog(QDialog):
 
     def register(self):
         student_id = self.student_id_input.text()
-        respone = requests.post(API_KEY + "register_face/" + student_id, files={"image": open(RAW_PHOTO_PATH, "rb")})
+        response = requests.post(API_KEY + "register_face/" + student_id, files={"image": open(RAW_PHOTO_PATH, "rb")})
         self.close()
         MainWindow.change_page(0, "Take photo again to recognize")
 
@@ -273,7 +255,13 @@ if __name__ == "__main__":
     window.show()
     try:
         sys.exit(app.exec())
+    except Exception as e:
+        sys.exit()
     finally:
+        if len(window.temp_attendance) > 0:
+            with open(ATTENDANCE_PATH, "a") as f:
+                f.write(f"(Count: {len(window.temp_attendance)})" + "\n")
+                f.write("\n")
         window.camera_page.cam.release()
         if os.path.exists(RAW_PHOTO_PATH):
             os.remove(RAW_PHOTO_PATH)
