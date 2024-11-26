@@ -22,9 +22,9 @@ class MainWindow(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        
+
         # Main window settings
-        self.setWindowTitle("Facal Recognition Attendance System")
+        self.setWindowTitle("Face Recognition Attendance System")
         self.setGeometry(400, 100, 1000, 700)
         self.setStyleSheet("""
             QMainWindow {
@@ -70,7 +70,7 @@ class MainWindow(QMainWindow):
         self.register_page = RegisterPage()
         self.stack_navigator.addWidget(self.register_page)
 
-        # Set current index
+        # Set first page
         self.stack_navigator.setCurrentIndex(0)
 
         # Timer for show status bar
@@ -122,7 +122,7 @@ class CameraPage(QWidget):
         self.take_photo_btn.clicked.connect(self.take_photo)
         self.hbox.addWidget(self.take_photo_btn)
 
-        # Timer for update frame
+        # Timer for updating frame
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_frame)
         self.timer.start(10)
@@ -142,7 +142,7 @@ class CameraPage(QWidget):
             return
         cv2.imwrite(RAW_PHOTO_PATH, frame)
         response = requests.post(API_KEY + "face_recognize", files={"image": open(RAW_PHOTO_PATH, "rb")})
-        
+
         if response.status_code != 400:
             top, right, bottom, left = response.json()["face_location"]
             color = (0, 255, 0) if response.status_code == 200 else (0, 0, 255)
@@ -184,6 +184,7 @@ class AttendancePage(QWidget):
         self.retake_photo_btn.clicked.connect(self.retake_photo)
         self.vbox.addWidget(self.retake_photo_btn)
 
+        # Timer for updating frame
         self.timer = QTimer()
         self.timer.timeout.connect(self.show_photo)
         self.timer.start(10)
@@ -233,6 +234,7 @@ class RegisterPage(QWidget):
         self.retake_photo_btn.clicked.connect(self.retake_photo)
         self.vbox.addWidget(self.retake_photo_btn)
 
+        # Timer for updating frame
         self.timer = QTimer()
         self.timer.timeout.connect(self.show_photo)
         self.timer.start(10)
