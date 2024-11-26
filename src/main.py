@@ -4,13 +4,14 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 import cv2, sys, os, requests
 from datetime import datetime
 from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QStackedLayout, QPushButton, QVBoxLayout, QHBoxLayout, QDialog, QLineEdit, QMessageBox
-from PyQt6.QtGui import QImage, QPixmap
+from PyQt6.QtGui import QImage, QPixmap, QAction
 from PyQt6.QtCore import QTimer
 
 API_KEY = "http://127.0.0.1:5000/"
 RAW_PHOTO_PATH = "src/raw_photo.jpg"
 FACE_DETECTED_PHOTO_PATH = "src/face_detected_photo.jpg"
 ATTENDANCE_PATH = "src/attendance.csv"
+TEMP_ATTENDANCE_PATH = "src/temp_attendance.csv"
 
 class MainWindow(QMainWindow):
     temp_data = {}
@@ -24,9 +25,13 @@ class MainWindow(QMainWindow):
         # Main window settings
         self.setWindowTitle("Facal Recognition Attendance System")
         self.setGeometry(400, 100, 1000, 700)
+        self.create_menu_bar()
         self.setStyleSheet("""
             QMainWindow {
                 background-color: lightpink;
+            }
+            QMenuBar {
+                background-color: lightpink
             }
             QStatusBar {
                 background-color: purple;
@@ -71,6 +76,17 @@ class MainWindow(QMainWindow):
         self.timer = QTimer()
         self.timer.timeout.connect(self.show_status_bar)
         self.timer.start(10)
+
+    def create_menu_bar(self):
+        menu_bar = self.menuBar()
+        settings = menu_bar.addMenu("Settings")
+
+        open_attendance_list_action = QAction("Open attendance list", self)
+        open_attendance_list_action.triggered.connect(self.open_attendance_list)
+        settings.addAction(open_attendance_list_action)
+
+    def open_attendance_list(self):
+        pass
 
     def show_status_bar(self):
         self.statusBar().showMessage(self.status)
@@ -179,10 +195,14 @@ class AttendancePage(QWidget):
             if MainWindow.temp_data["student"] in MainWindow.temp_attendance:
                 message_box = QMessageBox.information(None, "Information", "Your attendance has already marked")
                 return
+            
             with open(ATTENDANCE_PATH, "a") as f:
                 f.write(f'{MainWindow.temp_data["student"]}, {MainWindow.temp_data["time"]}\n')
                 MainWindow.temp_attendance.append(MainWindow.temp_data["student"])
                 message_box = QMessageBox.information(None, "Information", "Mark attendance successfully")
+
+            with open(TEMP_ATTENDANCE_PATH, "a") as f:
+                f.write(f'{MainWindow.temp_data["student"]}, {MainWindow.temp_data["time"]}\n')
 
     def retake_photo(self):
         MainWindow.change_page(0, "Take photo again")
@@ -258,12 +278,14 @@ if __name__ == "__main__":
     except Exception as e:
         sys.exit()
     finally:
+        window.camera_page.cam.release()
         if len(window.temp_attendance) > 0:
             with open(ATTENDANCE_PATH, "a") as f:
                 f.write(f"(Count: {len(window.temp_attendance)})" + "\n")
                 f.write("\n")
-        window.camera_page.cam.release()
         if os.path.exists(RAW_PHOTO_PATH):
             os.remove(RAW_PHOTO_PATH)
         if os.path.exists(FACE_DETECTED_PHOTO_PATH):
             os.remove(FACE_DETECTED_PHOTO_PATH)
+        if os.path.exists(TEMP_ATTENDANCE_PATH):
+            os.remove(TEMP_ATTENDANCE_PATH)
