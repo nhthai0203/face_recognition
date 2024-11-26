@@ -8,8 +8,10 @@ import numpy as np
 app = Flask(__name__)
 api = Api(app)
 
+# Constants
 DATA_PATH = "api/data/"
 TEMP_PATH = "api/temp.jpg"
+
 known_face_encodings = []
 student_IDs = []
 
@@ -62,7 +64,7 @@ class RegisterFace(Resource):
         student_IDs.append(student_ID)
         save_encoding(student_ID, encoding.tolist(), image[top:bottom, left:right])
         return {"message": "Face registered"}, 201  # Created status code
-    
+
 api.add_resource(FaceRecognize, "/face_recognize") 
 api.add_resource(RegisterFace, "/register_face/<string:student_ID>")
 
@@ -101,9 +103,6 @@ if __name__ == "__main__":
     try:
         load_data()
         app.run(debug=True)
-    except Exception as e:
-        print(e)
-        sys.exit()
     finally:
         if os.path.exists(TEMP_PATH):
             os.remove(TEMP_PATH)

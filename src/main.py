@@ -7,6 +7,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QWidget, QStacked
 from PyQt6.QtGui import QImage, QPixmap, QAction
 from PyQt6.QtCore import QTimer
 
+# Constants
 API_KEY = "http://127.0.0.1:5000/"
 RAW_PHOTO_PATH = "src/raw_photo.jpg"
 FACE_DETECTED_PHOTO_PATH = "src/face_detected_photo.jpg"
@@ -25,7 +26,6 @@ class MainWindow(QMainWindow):
         # Main window settings
         self.setWindowTitle("Facal Recognition Attendance System")
         self.setGeometry(400, 100, 1000, 700)
-        self.create_menu_bar()
         self.setStyleSheet("""
             QMainWindow {
                 background-color: lightpink;
@@ -55,6 +55,7 @@ class MainWindow(QMainWindow):
                 color: mangenta;
             }
             """)
+        self.create_menu_bar()
 
         # Central widget
         self.central_widget = QWidget()
@@ -269,23 +270,28 @@ class InputDialog(QDialog):
         self.close()
         MainWindow.change_page(0, "Take photo again to recognize")
 
+def remove_paths(*paths):
+    for path in paths:
+        if os.path.exists(path):
+            os.remove(path)
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
     try:
         sys.exit(app.exec())
-    except Exception as e:
-        sys.exit()
     finally:
-        window.camera_page.cam.release()
         if len(window.temp_attendance) > 0:
             with open(ATTENDANCE_PATH, "a") as f:
                 f.write(f"(Count: {len(window.temp_attendance)})" + "\n")
                 f.write("\n")
-        if os.path.exists(RAW_PHOTO_PATH):
-            os.remove(RAW_PHOTO_PATH)
-        if os.path.exists(FACE_DETECTED_PHOTO_PATH):
-            os.remove(FACE_DETECTED_PHOTO_PATH)
-        if os.path.exists(TEMP_ATTENDANCE_PATH):
-            os.remove(TEMP_ATTENDANCE_PATH)
+        window.camera_page.cam.release()
+        remove_paths(RAW_PHOTO_PATH, FACE_DETECTED_PHOTO_PATH, TEMP_ATTENDANCE_PATH)
+        
+        # if os.path.exists(RAW_PHOTO_PATH):
+        #     os.remove(RAW_PHOTO_PATH)
+        # if os.path.exists(FACE_DETECTED_PHOTO_PATH):
+        #     os.remove(FACE_DETECTED_PHOTO_PATH)
+        # if os.path.exists(TEMP_ATTENDANCE_PATH):
+        #     os.remove(TEMP_ATTENDANCE_PATH)
