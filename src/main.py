@@ -29,7 +29,7 @@ class MainWindow(QMainWindow):
         self.setStyleSheet("""
             QMainWindow {
                 background-color: lightpink;
-            }
+            }   
             QMenuBar {
                 background-color: lightpink
             }
