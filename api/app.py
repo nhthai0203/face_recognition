@@ -10,7 +10,7 @@ api = Api(app)
 
 # Constants
 DATA_PATH = "api/data/"
-TEMP_PATH = "api/temp.jpg"
+TEMP_PATH = "api/temp/temp.jpg"
 
 known_face_encodings = []
 student_IDs = []

@@ -9,10 +9,10 @@ from PyQt6.QtCore import QTimer
 
 # Constants
 API_KEY = "http://127.0.0.1:5000/"
-RAW_PHOTO_PATH = "src/raw_photo.jpg"
-FACE_DETECTED_PHOTO_PATH = "src/face_detected_photo.jpg"
+RAW_PHOTO_PATH = "src/temp/raw_photo.jpg"
+FACE_DETECTED_PHOTO_PATH = "src/temp/face_detected_photo.jpg"
+TEMP_ATTENDANCE_PATH = "src/temp/temp_attendance.csv"
 ATTENDANCE_PATH = "src/attendance.csv"
-TEMP_ATTENDANCE_PATH = "src/temp_attendance.csv"
 
 class MainWindow(QMainWindow):
     temp_data = {}
@@ -154,7 +154,7 @@ class CameraPage(QWidget):
         if response.status_code == 200:
             MainWindow.change_page(1, "Face recognized: " + response.json()["message"])
             now = datetime.now()
-            MainWindow.temp_data = {"student": response.json()["message"], "time": f"{now:%Y-%m-%d %H-%M-%S}"}
+            MainWindow.temp_data = {"student": response.json()["message"], "time": f"{now:%Y-%m-%d %H:%M:%S}"}
         elif response.status_code == 404:
             MainWindow.change_page(2, "Face not recognized: " + response.json()["message"])
         else:
@@ -276,10 +276,10 @@ def remove_paths(*paths):
             os.remove(path)
 
 if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    window = MainWindow()
-    window.show()
     try:
+        app = QApplication(sys.argv)
+        window = MainWindow()
+        window.show()
         sys.exit(app.exec())
     finally:
         if len(window.temp_attendance) > 0:
@@ -288,7 +288,7 @@ if __name__ == "__main__":
                 f.write("\n")
         window.camera_page.cam.release()
         remove_paths(RAW_PHOTO_PATH, FACE_DETECTED_PHOTO_PATH, TEMP_ATTENDANCE_PATH)
-        
+
         # if os.path.exists(RAW_PHOTO_PATH):
         #     os.remove(RAW_PHOTO_PATH)
         # if os.path.exists(FACE_DETECTED_PHOTO_PATH):
