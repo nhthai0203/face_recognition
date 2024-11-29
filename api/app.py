@@ -65,8 +65,27 @@ class RegisterFace(Resource):
         save_encoding(student_ID, encoding.tolist(), image[top:bottom, left:right])
         return {"message": "Face registered"}, 201  # Created status code
 
+class RegisterProfileFace(Resource):
+    def post(self, student_ID):
+        # Get the image and student ID from client
+        image_file = request.files["image"]
+        
+        # Save the image temporarily
+        image_file.save(TEMP_PATH)
+        
+        # Encoding face
+        image = face_recognition.load_image_file(TEMP_PATH)
+        face_location = encoding_face(image)
+        if not face_location:
+            return {"message": "No face detected"}, 400
+        
+        encoding, location = face_location
+        save_encoding(student_ID, encoding.tolist(), image)
+        return {"message": "Unknown", "face_location": location}, 200
+
 api.add_resource(FaceRecognize, "/face_recognize") 
 api.add_resource(RegisterFace, "/register_face/<string:student_ID>")
+api.add_resource(RegisterProfileFace, "/profile_face/<string:student_ID>")
 
 def load_data():
     for folder in os.listdir(DATA_PATH):
@@ -78,9 +97,9 @@ def load_data():
 def save_encoding(student_ID, encoding, image):
     if not os.path.exists(DATA_PATH + student_ID):
         os.mkdir(DATA_PATH + student_ID)
-    with open(DATA_PATH + student_ID + "/encoding.json", "w") as f:
+    with open(DATA_PATH + student_ID + "/encoding.json", "a") as f:
         json.dump(encoding, f)
-    cv2.imwrite(DATA_PATH + student_ID + "/image.jpg", cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+    cv2.imwrite(DATA_PATH + student_ID + "/image" + str(len(os.listdir(DATA_PATH + student_ID)) - 1) + ".jpg", cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 
 def encoding_face(image):
     face_locations = face_recognition.face_locations(image)

@@ -15,6 +15,7 @@ TEMP_ATTENDANCE_PATH = "src/temp/temp_attendance.csv"
 ATTENDANCE_PATH = "src/attendance.csv"
 
 class MainWindow(QMainWindow):
+    temp_id = None
     temp_data = {}
     temp_attendance = []
     status = "Take photo to recognize"
@@ -100,6 +101,7 @@ class MainWindow(QMainWindow):
 class CameraPage(QWidget):
     def __init__(self):
         super().__init__()
+        self.count = 0;
 
         # Camera settings
         self.cam = cv2.VideoCapture(0)
@@ -141,24 +143,36 @@ class CameraPage(QWidget):
         if not ret:
             return
         cv2.imwrite(RAW_PHOTO_PATH, frame)
-        response = requests.post(API_KEY + "face_recognize", files={"image": open(RAW_PHOTO_PATH, "rb")})
-
-        if response.status_code != 400:
-            top, right, bottom, left = response.json()["face_location"]
-            color = (0, 255, 0) if response.status_code == 200 else (0, 0, 255)
-            cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
-            cv2.rectangle(frame, (left - 1, bottom + 35), (right + 1, bottom), color, cv2.FILLED)
-            cv2.putText(frame, response.json()["message"], (left + 6, bottom + 27), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (255, 255, 255), 2)
-            cv2.imwrite(FACE_DETECTED_PHOTO_PATH, frame)
-
-        if response.status_code == 200:
-            MainWindow.change_page(1, "Face recognized: " + response.json()["message"])
-            now = datetime.now()
-            MainWindow.temp_data = {"student": response.json()["message"], "time": f"{now:%Y-%m-%d %H:%M:%S}"}
-        elif response.status_code == 404:
-            MainWindow.change_page(2, "Face not recognized: " + response.json()["message"])
+        if MainWindow.temp_id:
+            response = requests.post(API_KEY + "profile_face/" + MainWindow.temp_id, files={"image": open(RAW_PHOTO_PATH, "rb")})
+            if response.status_code == 200:
+                top, right, bottom, left = response.json()["face_location"]
+                cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
+                cv2.imshow("Profile Face", frame)
+                if self.count < 1:
+                    self.count += 1
+                else:
+                    self.count = 0
+                    MainWindow.temp_id = None
         else:
-            MainWindow.status = "Error: " + response.json()["message"]
+            response = requests.post(API_KEY + "face_recognize", files={"image": open(RAW_PHOTO_PATH, "rb")})
+
+            if response.status_code != 400:
+                top, right, bottom, left = response.json()["face_location"]
+                color = (0, 255, 0) if response.status_code == 200 else (0, 0, 255)
+                cv2.rectangle(frame, (left, top), (right, bottom), color, 2)
+                cv2.rectangle(frame, (left - 1, bottom + 35), (right + 1, bottom), color, cv2.FILLED)
+                cv2.putText(frame, response.json()["message"], (left + 6, bottom + 27), cv2.FONT_HERSHEY_SIMPLEX, 0.85, (255, 255, 255), 2)
+                cv2.imwrite(FACE_DETECTED_PHOTO_PATH, frame)
+
+            if response.status_code == 200:
+                MainWindow.change_page(1, "Face recognized: " + response.json()["message"])
+                now = datetime.now()
+                MainWindow.temp_data = {"student": response.json()["message"], "time": f"{now:%Y-%m-%d %H:%M:%S}"}
+            elif response.status_code == 404:
+                MainWindow.change_page(2, "Face not recognized: " + response.json()["message"])
+            else:
+                MainWindow.status = "Error: " + response.json()["message"]
 
 class AttendancePage(QWidget):
     def __init__(self):
@@ -270,7 +284,10 @@ class InputDialog(QDialog):
         student_id = self.student_id_input.text()
         response = requests.post(API_KEY + "register_face/" + student_id, files={"image": open(RAW_PHOTO_PATH, "rb")})
         self.close()
-        MainWindow.change_page(0, "Take photo again to recognize")
+        # MainWindow.change_page(0, "Take photo again to recognize")
+        message_box = QMessageBox.information(None, "Information", "viet gi do vao day")
+        MainWindow.temp_id = student_id
+        MainWindow.stack_navigator.setCurrentIndex(0)
 
 def remove_paths(*paths):
     for path in paths:
